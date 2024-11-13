@@ -6,14 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="b5386f8b-c97e-4643-96f6-454117f3f351" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/Led_00.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/ai_control.py" beforeDir="false" afterPath="$PROJECT_DIR$/TrackmaniaAI/ai_control.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/images.jpeg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/images.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/lib_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/tesseract_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/test.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TrackmaniaAI/trackmania_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/TrackmaniaAI/trackmania_env.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/TrackmaniaAI/train_ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/TrackmaniaAI/train_ai.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
