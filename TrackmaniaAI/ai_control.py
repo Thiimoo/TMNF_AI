@@ -4,35 +4,43 @@ from PIL import ImageGrab
 import pydirectinput
 import time
 
-def capture_screen(bbox=(0, 0, 800, 600)):
+# Track the last pressed key
+last_key = None
+
+def capture_screen(bbox=(0, 0, 1920, 1080)):
     """Capture a screenshot of the specified bounding box."""
     screen = np.array(ImageGrab.grab(bbox=bbox))
     return screen
 
-def steer_left(duration=0.1):
+def steer_left():
     """Simulate pressing the 'A' key to steer left."""
+    global last_key
+    if last_key != "a":
+        release_all_keys()
     pydirectinput.keyDown("a")
-    time.sleep(duration)
-    pydirectinput.keyUp("a")
+    last_key = "a"
 
-def steer_right(duration=0.1):
+def steer_right():
     """Simulate pressing the 'D' key to steer right."""
+    global last_key
+    if last_key != "d":
+        release_all_keys()
     pydirectinput.keyDown("d")
-    time.sleep(duration)
-    pydirectinput.keyUp("d")
+    last_key = "d"
 
-def accelerate(duration=0.1):
+def accelerate():
     """Simulate pressing the 'W' key to accelerate."""
+    global last_key
+    if last_key != "w":
+        release_all_keys()
     pydirectinput.keyDown("w")
-    time.sleep(duration)
-    pydirectinput.keyUp("w")
+    last_key = "w"
 
 def release_all_keys():
     """Release all control keys to reset the state."""
     pydirectinput.keyUp("w")
     pydirectinput.keyUp("a")
     pydirectinput.keyUp("d")
-    pydirectinput.keyUp("space")
 
 def reset_game():
     """Simulate pressing the 'Delete' key to reset the game."""

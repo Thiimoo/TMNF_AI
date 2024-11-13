@@ -5,10 +5,7 @@ import numpy as np
 import cv2
 import pymem
 from collections import deque
-
-from pygame.math import clamp
-
-import ai_control  # Ensure this module is correctly implemented and available
+import TrackmaniaAI.ai_control as ai_control
 
 class TrackmaniaEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -21,7 +18,6 @@ class TrackmaniaEnv(gym.Env):
 
         self.action_space = spaces.Discrete(3)
 
-        # Observation space: stacked grayscale frames
         self.observation_shape = (80, 60, 1)
         self.observation_space = spaces.Box(low=0, high=255,
                                             shape=(self.observation_shape[0],
@@ -31,19 +27,17 @@ class TrackmaniaEnv(gym.Env):
 
         self.frames = deque(maxlen=self.frame_stack)
         self.pm = None
-        self.distance_address = 0x203BC8B0
-        self.speed_address = 0x100B47C0
-        self.alt_speed_address = 0x203B80CC
-        self.cpk_address = 0x100B47B0
-        self.alt_cpk_address = 0x100B47B4
+        self.distance_address = 0x16867760
+        self.speed_address = 0x16867764
+        self.alt_speed_address = 0x16867764
+        self.cpk_address = 0x10092190
+        self.alt_cpk_address = 0x10092194
         self._initialize_memory()
-
-        # State variables
+        self.previous_speed = 0
         self.previous_distance = None
         self.previous_time = None
         self.previous_cpk = None
-        self.previous_checkpoint_time = None  # Store time of last checkpoint
-
+        self.previous_checkpoint_time = None
 
     def _initialize_memory(self):
         try:
@@ -73,7 +67,7 @@ class TrackmaniaEnv(gym.Env):
 
         self.previous_distance = self._read_distance()
         self.previous_time = time.time()
-        self.previous_cpk = None  # Reset the checkpoint variable for a new trial
+        self.previous_cpk = None
         self.frames.clear()
         initial_state = self._get_state()
         for _ in range(self.frame_stack):
@@ -84,24 +78,18 @@ class TrackmaniaEnv(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action), f"Invalid action: {action}"
 
-        # Perform the action (e.g., accelerate, steer, etc.)
         self._perform_action(action)
         time.sleep(0.05)
 
-        # Get the new state (screen capture)
         state = self._get_state()
         self.frames.append(state)
         observation = self._get_observation()
 
-        # Calculate reward
         reward = self._compute_reward()
 
-        # Check if the car is stuck (no progress)
         current_distance = self._read_distance()
-        # Update the previous distance for the next step
         self.previous_distance = current_distance
 
-        # Check if the episode is done (e.g., crash or other conditions)
         done = self._check_done()
 
         if self.render_mode:
@@ -147,64 +135,46 @@ class TrackmaniaEnv(gym.Env):
     def _compute_reward(self):
         current_distance = self._read_distance()
         current_speed = self._read_speed()
-        current_time = time.time()
-        time_delta = current_time - self.previous_time
 
         distance_delta = current_distance - self.previous_distance if self.previous_distance is not None else 0.0
         self.previous_distance = current_distance
-        self.previous_time = current_time
-
-        is_crashed = self._check_crash()
-        passed_checkpoint = self._check_checkpoint()
-        is_on_grass = self._check_on_grass()
 
         reward = 0.0
-        if current_speed>600:
-            current_speed = 0
-        # Speed-based reward, with higher speeds yielding higher rewards
-        reward += current_speed
 
+        if current_speed == 0 and self.previous_speed > 0:
+            reward -= 100  # Negative reward for crash
 
+        self.previous_speed = current_speed
 
-        if passed_checkpoint:
-            # Base reward for checkpoint
+        if current_speed < 600:
+            reward += current_speed
+        else:
+            reward -= 50
+
+        if self._check_checkpoint():
             checkpoint_reward = 200.0
-
-            # Calculate the time taken since the last checkpoint, if previous_checkpoint_time is set
-            if self.previous_checkpoint_time is not None:
-                time_diff = current_time - self.previous_checkpoint_time
-                checkpoint_speed_reward = max(0.0, 100.0 - time_diff * 10)  # Adjust the factor for desired sensitivity
-                checkpoint_reward += checkpoint_speed_reward
-            else:
-                time_diff = 0  # Set time_diff to 0 if it's the first checkpoint
-
             reward += checkpoint_reward
 
-            # Update checkpoint time
-            self.previous_checkpoint_time = current_time
-            print(f"Checkpoint reached! Time: {time_diff:.2f}s, Reward: {checkpoint_reward:.2f}")
-
-        # Check for finish line
         finish_reached = self._check_finish()
         if finish_reached:
             reward += 1000.0
-            print("Finish line reached! Reward for completion.")
-            self.reset()  # Reset for a new trial
+            self.reset()
 
-        # Reward for progress, based on distance traveled since last step
         progress_reward = distance_delta * 0.5
         reward += progress_reward
-        print(f"Reward: {reward}, Speed: {current_speed:.2f}, Finish: {finish_reached}, Distance: {distance_delta:.2f}, ")
-        return reward
 
+        print(f"Reward: {reward}, Speed: {current_speed:.2f}, Finish: {finish_reached}, Distance: {distance_delta:.2f}")
+        self.previous_speed = current_speed
+        return reward
 
     def _check_done(self):
         return self._check_crash()
 
     def _check_crash(self):
-        state = self._get_state()
-        mean_pixel = np.mean(state)
-        return mean_pixel < 50
+        current_speed = self._read_speed()
+        if current_speed == 0 and self.previous_speed > 0:
+            return True
+        return False
 
     def _check_checkpoint(self):
         try:
@@ -226,17 +196,12 @@ class TrackmaniaEnv(gym.Env):
     def _check_finish(self):
         try:
             cpk = self.pm.read_int(self.alt_cpk_address)
-            if cpk == 14:  # Finish line reached
+            if cpk == 14:
                 return True
             return False
         except Exception as e:
             print(f"Error reading finish line from memory: {e}")
             return False
-
-    def _check_on_grass(self):
-        state = self._get_state()
-        grass_pixels = np.sum(state < 100)
-        return grass_pixels > 500
 
     def render(self, mode='human'):
         if self.render_mode:
